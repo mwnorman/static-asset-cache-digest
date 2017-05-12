@@ -1,12 +1,39 @@
+tmp/
+*.tmp
+*.bak
+*.swp
+
+# OSX metadata files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Build Files #
+bin
+target
+build/
+
+#Java
 *.class
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.ear
-
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+# Java annotation processor (APT)
+.factorypath
+# Spring Bootstrap artifacts
+dependency-reduced-pom.xml

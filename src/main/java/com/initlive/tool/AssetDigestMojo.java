@@ -2,7 +2,7 @@ package com.initlive.tool;
 
 import static org.apache.maven.plugins.annotations.LifecyclePhase.PREPARE_PACKAGE;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,6 +27,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Entities.EscapeMode;
 import org.jsoup.select.Elements;
 
 @Mojo(name = "generate", defaultPhase = PREPARE_PACKAGE)
@@ -110,10 +111,10 @@ public class AssetDigestMojo extends AbstractMojo {
             for (String rewriteFile : rewriteFiles) {
                 Path rewriteFilePath = Paths.get(rewriteFile);
                 if (Files.notExists(rewriteFilePath)) {
-                    getLog().info(rewriteFilePath.toString() + "does not exist" );
+                    getLog().debug(rewriteFilePath.toString() + "does not exist" );
                 }
                 else {
-                    Document rewriteDoc = Jsoup.parse(rewriteFilePath.toFile(), UTF_8.name());
+                    Document rewriteDoc = Jsoup.parse(rewriteFilePath.toFile(), US_ASCII.name());
                     //first do <link rel="stylesheet" href= ...>
                     Elements linkHrefs = rewriteDoc.select("link[href]");
                     for (Element linkHref : linkHrefs) {
@@ -147,6 +148,7 @@ public class AssetDigestMojo extends AbstractMojo {
                             }
                         }
                     }
+                    rewriteDoc.outputSettings().prettyPrint(false).escapeMode(EscapeMode.extended);
                     Files.write(rewriteFilePath, rewriteDoc.outerHtml().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING );
                 }
             }

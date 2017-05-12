@@ -2,10 +2,13 @@ package com.initlive.tool;
 
 import static org.apache.maven.plugins.annotations.LifecyclePhase.PREPARE_PACKAGE;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -21,6 +24,10 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 @Mojo(name = "generate", defaultPhase = PREPARE_PACKAGE)
 public class AssetDigestMojo extends AbstractMojo {
@@ -61,6 +68,12 @@ public class AssetDigestMojo extends AbstractMojo {
     @Parameter
     protected List<String> fileExtensions;
 
+    /**
+     * specified files to be rewritten
+     */
+    @Parameter(required = true)
+    protected List<String> rewriteFiles;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         Path sourcePath = Paths.get(sourceDirectory);
@@ -89,10 +102,53 @@ public class AssetDigestMojo extends AbstractMojo {
         Map<String, String> filenameManifest = null;
         try {
             filenameManifest = walkFileTree(sourcePath, targetPath, contextPath, digest, fileExtensions, skipDirs, getLog());
-            //TODO use JSoup to find all the places in index.html that needs altering
             Map<String, String> sortedMap = new TreeMap<>(filenameManifest);
             for (Entry<String, String> entry : sortedMap.entrySet()) {
                 getLog().info("mapped " + entry.getKey() + " to " + entry.getValue());
+            }
+            //TODO use JSoup to find all the places in index.html that needs altering
+            for (String rewriteFile : rewriteFiles) {
+                Path rewriteFilePath = Paths.get(rewriteFile);
+                if (Files.notExists(rewriteFilePath)) {
+                    getLog().info(rewriteFilePath.toString() + "does not exist" );
+                }
+                else {
+                    Document rewriteDoc = Jsoup.parse(rewriteFilePath.toFile(), UTF_8.name());
+                    //first do <link rel="stylesheet" href= ...>
+                    Elements linkHrefs = rewriteDoc.select("link[href]");
+                    for (Element linkHref : linkHrefs) {
+                        String hrefAttr = linkHref.attr("href");
+                        if (hrefAttr != null && !hrefAttr.isEmpty()) {
+                            String renamedRef = filenameManifest.get(hrefAttr);
+                            if (renamedRef != null && !hrefAttr.isEmpty()) {
+                                linkHref.attr("href", renamedRef);
+                            }
+                        }
+                    }
+                    //next do <script src= ...>
+                    Elements scriptSrcs = rewriteDoc.select("script[src]");
+                    for (Element scriptSrc : scriptSrcs) {
+                        String srcAttr = scriptSrc.attr("src");
+                        if (srcAttr != null && !srcAttr.isEmpty()) {
+                            String renamedRef = filenameManifest.get(srcAttr);
+                            if (renamedRef != null && !srcAttr.isEmpty()) {
+                                scriptSrc.attr("src", renamedRef);
+                            }
+                        }
+                    }
+                    //next do <img src= ...>
+                    Elements imgSrcs = rewriteDoc.select("img[src]");
+                    for (Element imgSrc : imgSrcs) {
+                        String srcAttr = imgSrc.attr("src");
+                        if (srcAttr != null && !srcAttr.isEmpty()) {
+                            String renamedRef = filenameManifest.get(srcAttr);
+                            if (renamedRef != null && !srcAttr.isEmpty()) {
+                                imgSrc.attr("src", renamedRef);
+                            }
+                        }
+                    }
+                    Files.write(rewriteFilePath, rewriteDoc.outerHtml().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING );
+                }
             }
         }
         catch (Exception e) {
@@ -124,6 +180,7 @@ public class AssetDigestMojo extends AbstractMojo {
         mojo.contextPath = "web-admin/app";
         mojo.sourceDirectory = "/Users/mwnorman/git/initlive-server/src/main/webapp";
         mojo.targetDirectory = "/Users/mwnorman/git/initlive-server/target/webapp-digest";
+        mojo.rewriteFiles = new ArrayList<String>(Arrays.asList("/Users/mwnorman/git/initlive-server/target/webapp-digest/web-admin/app/index.html"));
         mojo.fileExtensions = new ArrayList<String>(Arrays.asList("js", "css", "png", "svg", "jpg", "gif", "jpeg"));
         mojo.skipDirs = new ArrayList<String>(Arrays.asList(
             "css/fonts", "files", "fonts", "js/libs", "less", "lib", "lib/angular", "lib/angular/i18n", "lib/angular-1-5", "lib/angular-1-5/i18n"));

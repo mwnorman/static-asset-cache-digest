@@ -1,8 +1,7 @@
 package com.initlive.tool;
 
-import static org.apache.maven.plugins.annotations.LifecyclePhase.PREPARE_PACKAGE;
-
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static org.apache.maven.plugins.annotations.LifecyclePhase.PREPARE_PACKAGE;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,8 +10,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,10 +30,16 @@ import org.jsoup.select.Elements;
 @Mojo(name = "generate", defaultPhase = PREPARE_PACKAGE)
 public class AssetDigestMojo extends AbstractMojo {
 
+    static final String DEFAULT_DIGEST_ALG = "MD5";
+    static final String DEFAULT_SOURCE_DIRECTORY = "${basedir}/src/main/webapp";
+    static final String DEFAULT_TARGET_DIRECTORY = "${project.build.directory}/static-assets";
+
+    //static-assets
+
     /**
      * digest
      */
-    @Parameter(defaultValue = "MD5")
+    @Parameter(defaultValue = DEFAULT_DIGEST_ALG)
     protected String digestAlgorithm;
 
     /**
@@ -48,13 +51,13 @@ public class AssetDigestMojo extends AbstractMojo {
     /**
      * source directory
      */
-    @Parameter(defaultValue = "${basedir}/src/main/webapp", required = true)
+    @Parameter(defaultValue = DEFAULT_SOURCE_DIRECTORY, required = true)
     protected String sourceDirectory;
 
     /**
      * target directory
      */
-    @Parameter(defaultValue = "${project.build.directory}/webapp-digest", required = true)
+    @Parameter(defaultValue = DEFAULT_TARGET_DIRECTORY, required = true)
     protected String targetDirectory;
 
     /**
@@ -107,7 +110,6 @@ public class AssetDigestMojo extends AbstractMojo {
             for (Entry<String, String> entry : sortedMap.entrySet()) {
                 getLog().info("mapped " + entry.getKey() + " to " + entry.getValue());
             }
-            //TODO use JSoup to find all the places in index.html that needs altering
             for (String rewriteFile : rewriteFiles) {
                 Path rewriteFilePath = Paths.get(rewriteFile);
                 if (Files.notExists(rewriteFilePath)) {
@@ -166,6 +168,7 @@ public class AssetDigestMojo extends AbstractMojo {
     }
 
     protected MessageDigest getDigest(String digestAlg) {
+        //TODO - so far only tested MD5, should test others
         MessageDigest digest = null;
         try {
             digest = MessageDigest.getInstance(digestAlg);
@@ -174,23 +177,5 @@ public class AssetDigestMojo extends AbstractMojo {
             getLog().error("cannot file digest algorithm " + digestAlg, ex);
         }
         return digest;
-    }
-
-    public static void main(String ...args) {
-        AssetDigestMojo mojo = new AssetDigestMojo();
-        mojo.digestAlgorithm = "MD5";
-        mojo.contextPath = "web-admin/app";
-        mojo.sourceDirectory = "/Users/mwnorman/git/initlive-server/src/main/webapp";
-        mojo.targetDirectory = "/Users/mwnorman/git/initlive-server/target/webapp-digest";
-        mojo.rewriteFiles = new ArrayList<String>(Arrays.asList("/Users/mwnorman/git/initlive-server/target/webapp-digest/web-admin/app/index.html"));
-        mojo.fileExtensions = new ArrayList<String>(Arrays.asList("js", "css", "png", "svg", "jpg", "gif", "jpeg"));
-        mojo.skipDirs = new ArrayList<String>(Arrays.asList(
-            "css/fonts", "files", "fonts", "js/libs", "less", "lib", "lib/angular", "lib/angular/i18n", "lib/angular-1-5", "lib/angular-1-5/i18n"));
-        try {
-            mojo.execute();
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
